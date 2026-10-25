@@ -10,6 +10,7 @@ import {
   getSupabaseConfig,
   saveSupabaseConfig,
   testSupabaseConnection,
+  bulkInsertRegistrationsToSupabase,
 } from '../utils/supabase';
 import {
   X,
@@ -25,6 +26,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Settings,
+  UploadCloud,
 } from 'lucide-react';
 
 interface CaptainsPortalProps {
@@ -57,6 +59,7 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
   const [isTesting, setIsTesting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
+  const [isPushing, setIsPushing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -116,10 +119,26 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
     return matchesSearch && matchesLevel;
   });
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (confirm(`Confirmer la suppression de l'inscription de ${name} ?`)) {
-      deleteStoredRegistration(id);
+      await deleteStoredRegistration(id);
       onRefresh();
+    }
+  };
+
+  const handlePushLocalToSupabase = async () => {
+    if (registrations.length === 0) {
+      alert('Aucune inscription à transférer.');
+      return;
+    }
+    setIsPushing(true);
+    const res = await bulkInsertRegistrationsToSupabase(registrations);
+    setIsPushing(false);
+    if (res.error) {
+      alert(`Erreur d'envoi vers Supabase : ${res.error}`);
+    } else {
+      alert(`${res.count} membre(s) synchronisé(s) dans la table registrations de Supabase !`);
+      handleSync();
     }
   };
 
@@ -286,6 +305,22 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
                     <span>Enregistrer & Tester la connexion</span>
                   )}
                 </button>
+
+                {isConfigured && (
+                  <button
+                    type="button"
+                    onClick={handlePushLocalToSupabase}
+                    disabled={isPushing}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 font-bold uppercase cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>
+                      {isPushing
+                        ? 'Transfert en cours...'
+                        : 'Transférer ces membres vers Supabase'}
+                    </span>
+                  </button>
+                )}
               </div>
             </form>
           </div>

@@ -3,6 +3,7 @@ import {
   isSupabaseConfigured,
   insertRegistrationToSupabase,
   fetchRegistrationsFromSupabase,
+  deleteRegistrationFromSupabase,
 } from './supabase';
 
 const STORAGE_KEY = 'mrc_registrations_v1';
@@ -131,7 +132,17 @@ export const syncAllRegistrationsWithSupabase = async (): Promise<RegistrationDa
   return getStoredRegistrations();
 };
 
-export const deleteStoredRegistration = (id: string): RegistrationData[] => {
+export const deleteStoredRegistration = async (
+  id: string
+): Promise<RegistrationData[]> => {
+  if (isSupabaseConfigured()) {
+    try {
+      await deleteRegistrationFromSupabase(id);
+    } catch (e) {
+      console.error('Error deleting from Supabase:', e);
+    }
+  }
+
   const current = getStoredRegistrations();
   const updated = current.filter((r) => r.id !== id);
   try {

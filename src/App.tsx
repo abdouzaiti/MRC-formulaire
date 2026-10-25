@@ -8,7 +8,10 @@ import { RegistrationForm } from './components/RegistrationForm';
 import { ConfirmationScreen } from './components/ConfirmationScreen';
 import { CaptainsPortal } from './components/CaptainsPortal';
 import { RegistrationData } from './types';
-import { getStoredRegistrations } from './utils/storage';
+import {
+  getStoredRegistrations,
+  syncAllRegistrationsWithSupabase,
+} from './utils/storage';
 
 export default function App() {
   const [currentRegistration, setCurrentRegistration] = useState<RegistrationData | null>(null);
@@ -16,10 +19,18 @@ export default function App() {
   const [activeCaptain, setActiveCaptain] = useState<string>('');
   const [allRegistrations, setAllRegistrations] = useState<RegistrationData[]>([]);
 
-  // Load registered members from storage
-  const refreshRegistrations = () => {
+  // Load registered members from storage and sync with Supabase
+  const refreshRegistrations = async () => {
     const list = getStoredRegistrations();
     setAllRegistrations(list);
+    try {
+      const synced = await syncAllRegistrationsWithSupabase();
+      if (synced && synced.length > 0) {
+        setAllRegistrations(synced);
+      }
+    } catch (e) {
+      console.warn('Initial Supabase sync check:', e);
+    }
   };
 
   useEffect(() => {

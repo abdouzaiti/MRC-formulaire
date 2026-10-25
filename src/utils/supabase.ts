@@ -201,3 +201,59 @@ export const fetchRegistrationsFromSupabase = async (): Promise<
     return null;
   }
 };
+
+// Delete a registration row from Supabase
+export const deleteRegistrationFromSupabase = async (
+  id: string
+): Promise<boolean> => {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client.from('registrations').delete().eq('id', id);
+    if (error) {
+      console.error('Error deleting from Supabase:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception deleting from Supabase:', err);
+    return false;
+  }
+};
+
+// Push local registrations into Supabase
+export const bulkInsertRegistrationsToSupabase = async (
+  items: RegistrationData[]
+): Promise<{ count: number; error: string | null }> => {
+  const client = getSupabaseClient();
+  if (!client) return { count: 0, error: 'Supabase non configuré' };
+
+  try {
+    const rows = items.map((r) => ({
+      full_name: r.fullName,
+      email: r.email,
+      phone: r.phone,
+      birth_date: r.birthDate,
+      gender: r.gender,
+      running_level: r.runningLevel,
+      health_status: r.healthStatus,
+      health_restrictions: r.healthRestrictions || null,
+      medical_consent: r.medicalConsent,
+      terms_accepted: r.termsAccepted,
+    }));
+
+    const { data, error } = await client
+      .from('registrations')
+      .insert(rows)
+      .select();
+
+    if (error) {
+      return { count: 0, error: error.message };
+    }
+
+    return { count: data ? data.length : items.length, error: null };
+  } catch (e: any) {
+    return { count: 0, error: e?.message || 'Erreur' };
+  }
+};
