@@ -1,0 +1,6 @@
+{
+  "name": "Mosta Run Club - Inscription Officielle",
+  "description": "Formulaire d'inscription officiel du Mosta Run Club (MRC) - Rejoins les Marins. Une seule passion. Un seul club. Une seule famille.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

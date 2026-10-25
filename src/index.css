@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-condensed: "Barlow Condensed", -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --color-mrc-blue: #0047AB;
+  --color-mrc-blue-dark: #003078;
+  --color-mrc-blue-light: #0056D2;
+  --color-mrc-blue-soft: #F0F6FF;
+  --color-mrc-blue-border: #D0E2FF;
+}
+
+/* Custom Sports Flyer Rules and Typography */
+.font-condensed {
+  font-family: var(--font-condensed);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Subtle grid line accents reminiscent of race bibs & Swiss sports flyers */
+.bg-grid-sports {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 71, 171, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 71, 171, 0.04) 1px, transparent 1px);
+}
+
+.sports-barcode {
+  background: repeating-linear-gradient(
+    90deg,
+    #0047AB,
+    #0047AB 2px,
+    transparent 2px,
+    transparent 4px,
+    #0047AB 4px,
+    #0047AB 7px,
+    transparent 7px,
+    transparent 9px,
+    #0047AB 9px,
+    #0047AB 10px,
+    transparent 10px,
+    transparent 14px
+  );
+}
