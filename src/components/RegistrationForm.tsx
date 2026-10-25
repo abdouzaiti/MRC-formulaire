@@ -150,10 +150,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     setIsSubmitting(true);
 
-    // Simulate clean athletic verification
-    setTimeout(() => {
-      import('../utils/storage').then(({ saveNewRegistration }) => {
-        const saved = saveNewRegistration({
+    import('../utils/storage').then(async ({ saveNewRegistration }) => {
+      try {
+        const saved = await saveNewRegistration({
           fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
@@ -168,8 +167,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
         setIsSubmitting(false);
         onSubmitSuccess(saved);
-      });
-    }, 450);
+      } catch (err) {
+        console.error('Error saving registration:', err);
+        setIsSubmitting(false);
+      }
+    });
   };
 
   return (

@@ -1,16 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RegistrationData } from '../types';
-import { exportToCsv, deleteStoredRegistration } from '../utils/storage';
+import {
+  exportToCsv,
+  deleteStoredRegistration,
+  syncAllRegistrationsWithSupabase,
+} from '../utils/storage';
+import {
+  isSupabaseConfigured,
+  getSupabaseConfig,
+  saveSupabaseConfig,
+  testSupabaseConnection,
+} from '../utils/supabase';
 import {
   X,
   Download,
   Search,
   Trash2,
   ShieldAlert,
-  Users,
   Eye,
   EyeOff,
   Filter,
+  Database,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  Settings,
 } from 'lucide-react';
 
 interface CaptainsPortalProps {
@@ -32,7 +46,62 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [unmaskedHealthId, setUnmaskedHealthId] = useState<string | null>(null);
 
+  // Supabase Sync & Config State
+  const [showConfig, setShowConfig] = useState(false);
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const cfg = getSupabaseConfig();
+      setSupabaseUrl(cfg.url);
+      setSupabaseAnonKey(cfg.anonKey);
+
+      // Auto-sync when modal opens if configured
+      if (cfg.url && cfg.anonKey) {
+        handleSync();
+      }
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncStatusMsg('');
+    try {
+      await syncAllRegistrationsWithSupabase();
+      onRefresh();
+      setSyncStatusMsg('Synchronisation Supabase réussie');
+    } catch (err: any) {
+      setSyncStatusMsg(`Erreur de synchronisation: ${err?.message || 'Inconnue'}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSaveAndTestConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsTesting(true);
+    setTestResult(null);
+
+    saveSupabaseConfig(supabaseUrl, supabaseAnonKey);
+
+    const res = await testSupabaseConnection();
+    setIsTesting(false);
+    setTestResult(res);
+
+    if (res.success) {
+      handleSync();
+    }
+  };
 
   const filtered = registrations.filter((r) => {
     const matchesSearch =
@@ -57,6 +126,8 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
   const handleExport = () => {
     exportToCsv(registrations);
   };
+
+  const isConfigured = isSupabaseConfigured();
 
   // Metrics
   const totalCount = registrations.length;
@@ -85,11 +156,140 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Supabase Status & Action Bar */}
+        <div className="px-4 py-2.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <Database className="w-3.5 h-3.5 text-blue-400" />
+            <span>Base Supabase :</span>
+            {isConfigured ? (
+              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Connecté
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-amber-400 font-bold">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Non configuré
+              </span>
+            )}
+            {syncStatusMsg && (
+              <span className="text-slate-400 ml-2 hidden sm:inline">
+                ({syncStatusMsg})
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isConfigured && (
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-none flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`}
+                />
+                <span>{isSyncing ? 'Synchronisation...' : 'Synchroniser'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowConfig(!showConfig)}
+              className="px-2.5 py-1 bg-[#0047AB] hover:bg-[#003078] text-white flex items-center gap-1 cursor-pointer font-bold"
+            >
+              <Settings className="w-3 h-3" />
+              <span>{showConfig ? 'Masquer Clés' : 'Paramètres Supabase'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Supabase Configuration Drawer */}
+        {showConfig && (
+          <div className="p-4 bg-slate-50 border-b border-slate-300 font-mono text-xs animate-fadeIn">
+            <form onSubmit={handleSaveAndTestConfig} className="space-y-3">
+              <div className="font-bold text-slate-900 uppercase flex items-center gap-1.5">
+                <Database className="w-4 h-4 text-[#0047AB]" />
+                <span>Connexion Supabase du Mosta Run Club</span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                Entre les identifiants de ton projet Supabase (situés dans{' '}
+                <em>Project Settings &gt; API</em>).
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="url"
+                    value={supabaseUrl}
+                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                    placeholder="https://xyzcompany.supabase.co"
+                    className="w-full p-2 bg-white border border-slate-300 text-xs focus:border-[#0047AB] focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                    Supabase Anon Public Key
+                  </label>
+                  <input
+                    type="password"
+                    value={supabaseAnonKey}
+                    onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                    className="w-full p-2 bg-white border border-slate-300 text-xs focus:border-[#0047AB] focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              {testResult && (
+                <div
+                  className={`p-2.5 border text-xs flex items-center gap-2 ${
+                    testResult.success
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                      : 'bg-red-50 border-red-300 text-red-800'
+                  }`}
+                >
+                  {testResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  )}
+                  <span>{testResult.message}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isTesting}
+                  className="bg-[#0047AB] hover:bg-[#003078] text-white px-4 py-2 font-bold uppercase cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isTesting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Test de connexion...</span>
+                    </>
+                  ) : (
+                    <span>Enregistrer & Tester la connexion</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Top Stats Overview */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[#F0F6FF] border-b border-[#0047AB]/20 text-xs font-mono">
@@ -124,7 +324,7 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
           <div className="bg-white p-3 border border-slate-200 flex items-center justify-center">
             <button
               onClick={handleExport}
-              className="w-full bg-[#0047AB] hover:bg-[#003078] text-white text-xs font-condensed font-bold py-2 px-3 flex items-center justify-center gap-1.5 uppercase transition-colors"
+              className="w-full bg-[#0047AB] hover:bg-[#003078] text-white text-xs font-condensed font-bold py-2 px-3 flex items-center justify-center gap-1.5 uppercase transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exporter CSV</span>
@@ -203,7 +403,7 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
                       <button
                         onClick={() => handleDelete(item.id, item.fullName)}
                         title="Supprimer"
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -238,7 +438,7 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
                                 unmaskedHealthId === item.id ? null : item.id
                               )
                             }
-                            className="text-[#0047AB] hover:underline text-[11px] font-mono flex items-center gap-1"
+                            className="text-[#0047AB] hover:underline text-[11px] font-mono flex items-center gap-1 cursor-pointer"
                           >
                             {unmaskedHealthId === item.id ? (
                               <>

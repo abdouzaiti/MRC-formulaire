@@ -1,4 +1,9 @@
 import { RegistrationData } from '../types';
+import {
+  isSupabaseConfigured,
+  insertRegistrationToSupabase,
+  fetchRegistrationsFromSupabase,
+} from './supabase';
 
 const STORAGE_KEY = 'mrc_registrations_v1';
 
@@ -13,7 +18,6 @@ const INITIAL_MEMBERS: RegistrationData[] = [
     birthDate: '1995-04-12',
     gender: 'homme',
     runningLevel: 'avance',
-    shirtSize: 'M',
     healthStatus: 'non',
     medicalConsent: true,
     termsAccepted: true,
@@ -28,7 +32,6 @@ const INITIAL_MEMBERS: RegistrationData[] = [
     birthDate: '1998-08-25',
     gender: 'femme',
     runningLevel: 'intermediaire',
-    shirtSize: 'S',
     healthStatus: 'non',
     medicalConsent: true,
     termsAccepted: true,
@@ -43,7 +46,6 @@ const INITIAL_MEMBERS: RegistrationData[] = [
     birthDate: '1990-11-03',
     gender: 'homme',
     runningLevel: 'intermediaire',
-    shirtSize: 'L',
     healthStatus: 'non',
     medicalConsent: true,
     termsAccepted: true,
@@ -65,13 +67,35 @@ export const getStoredRegistrations = (): RegistrationData[] => {
   }
 };
 
-export const saveNewRegistration = (
+export const saveNewRegistration = async (
   formData: Omit<RegistrationData, 'id' | 'bibNumber' | 'registeredAt'>
-): RegistrationData => {
+): Promise<RegistrationData> => {
+  // 1. Try syncing directly with Supabase first if configured
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await insertRegistrationToSupabase(formData);
+      if (data && !error) {
+        // Persist to local cache for instant offline review
+        const current = getStoredRegistrations();
+        const updated = [data, ...current.filter((r) => r.id !== data.id)];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {
+          console.error('Local cache storage error:', e);
+        }
+        return data;
+      }
+      console.warn('Supabase insertion failed, falling back to local storage:', error);
+    } catch (err) {
+      console.error('Supabase exception, falling back to local storage:', err);
+    }
+  }
+
+  // 2. Fallback to local storage (e.g. before Supabase credentials are input)
   const current = getStoredRegistrations();
   const nextNum = current.length + 21;
   const bibNumber = `MRC-26-${String(nextNum).padStart(3, '0')}`;
-  
+
   const newRecord: RegistrationData = {
     ...formData,
     id: `mrc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -87,6 +111,24 @@ export const saveNewRegistration = (
   }
 
   return newRecord;
+};
+
+export const syncAllRegistrationsWithSupabase = async (): Promise<RegistrationData[]> => {
+  if (!isSupabaseConfigured()) {
+    return getStoredRegistrations();
+  }
+
+  const remote = await fetchRegistrationsFromSupabase();
+  if (remote && Array.isArray(remote) && remote.length > 0) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+    } catch (e) {
+      console.error('Error saving remote registrations to storage', e);
+    }
+    return remote;
+  }
+
+  return getStoredRegistrations();
 };
 
 export const deleteStoredRegistration = (id: string): RegistrationData[] => {
