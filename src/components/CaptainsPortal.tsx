@@ -219,14 +219,6 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => setShowConfig(!showConfig)}
-              className="px-2.5 py-1 bg-[#0047AB] hover:bg-[#003078] text-white flex items-center gap-1 cursor-pointer font-bold"
-            >
-              <Settings className="w-3 h-3" />
-              <span>{showConfig ? 'Masquer Clés' : 'Paramètres Supabase'}</span>
-            </button>
           </div>
         </div>
 
@@ -327,32 +319,13 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
         )}
 
         {/* Top Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[#F0F6FF] border-b border-[#0047AB]/20 text-xs font-mono">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-[#F0F6FF] border-b border-[#0047AB]/20 text-xs font-mono">
           <div className="bg-white p-3 border border-slate-200">
             <span className="text-slate-400 block uppercase font-bold text-[10px]">
               TOTAL MARINS
             </span>
             <span className="text-2xl font-condensed font-black text-[#0047AB]">
               {totalCount}
-            </span>
-          </div>
-
-          <div className="bg-white p-3 border border-slate-200">
-            <span className="text-slate-400 block uppercase font-bold text-[10px]">
-              RÉPARTITION
-            </span>
-            <span className="text-sm font-bold text-slate-800">
-              {womenCount} F · {menCount} H
-            </span>
-          </div>
-
-          <div className="bg-white p-3 border border-slate-200">
-            <span className="text-slate-400 block uppercase font-bold text-[10px]">
-              SUIVI SANTÉ
-            </span>
-            <span className="text-sm font-bold text-amber-600 flex items-center gap-1">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              {healthRestrictionsCount} mention(s)
             </span>
           </div>
 
@@ -390,7 +363,8 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
               <option value="all">Tous les niveaux</option>
               <option value="debutant">Débutant</option>
               <option value="intermediaire">Intermédiaire</option>
-              <option value="avance">Confirmé / Marathon</option>
+              <option value="avance">Avancé</option>
+              <option value="elite">Élite</option>
             </select>
           </div>
         </div>
