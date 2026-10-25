@@ -127,34 +127,53 @@ export const insertRegistrationToSupabase = async (
       terms_accepted: formData.termsAccepted,
     };
 
+    // First attempt: insert + select returning record
     const { data, error } = await client
       .from('registrations')
       .insert(payload)
       .select()
       .single();
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      return { data: null, error: new Error(error.message) };
+    if (!error && data) {
+      const savedRecord: RegistrationData = {
+        id: data.id,
+        bibNumber: data.bib_number || `MRC-26-${String(data.id).slice(0, 4)}`,
+        registeredAt: data.created_at || new Date().toISOString(),
+        fullName: data.full_name,
+        email: data.email,
+        phone: data.phone,
+        birthDate: data.birth_date,
+        gender: data.gender,
+        runningLevel: data.running_level,
+        healthStatus: data.health_status,
+        healthRestrictions: data.health_restrictions || '',
+        medicalConsent: data.medical_consent,
+        termsAccepted: data.terms_accepted,
+      };
+      return { data: savedRecord, error: null };
     }
 
-    const savedRecord: RegistrationData = {
-      id: data.id,
-      bibNumber: data.bib_number || `MRC-26-${String(data.id).slice(0, 4)}`,
-      registeredAt: data.created_at || new Date().toISOString(),
-      fullName: data.full_name,
-      email: data.email,
-      phone: data.phone,
-      birthDate: data.birth_date,
-      gender: data.gender,
-      runningLevel: data.running_level,
-      healthStatus: data.health_status,
-      healthRestrictions: data.health_restrictions || '',
-      medicalConsent: data.medical_consent,
-      termsAccepted: data.terms_accepted,
-    };
+    // Fallback if select() failed due to RLS read policy restrictions
+    if (error) {
+      console.warn('Supabase select error, trying plain insert fallback:', error.message);
+      const { error: plainError } = await client
+        .from('registrations')
+        .insert(payload);
 
-    return { data: savedRecord, error: null };
+      if (!plainError) {
+        const fallbackRecord: RegistrationData = {
+          ...formData,
+          id: `sp-${Date.now()}`,
+          bibNumber: `MRC-26-${Math.floor(100 + Math.random() * 900)}`,
+          registeredAt: new Date().toISOString(),
+        };
+        return { data: fallbackRecord, error: null };
+      }
+
+      return { data: null, error: new Error(plainError.message) };
+    }
+
+    return { data: null, error: new Error('Insertion échouée') };
   } catch (err: any) {
     console.error('Exception during Supabase insert:', err);
     return { data: null, error: err };
@@ -249,7 +268,12 @@ export const bulkInsertRegistrationsToSupabase = async (
       .select();
 
     if (error) {
-      return { count: 0, error: error.message };
+      // Fallback: try plain insert if select policy is missing
+      const { error: plainErr } = await client.from('registrations').insert(rows);
+      if (!plainErr) {
+        return { count: items.length, error: null };
+      }
+      return { count: 0, error: plainErr.message };
     }
 
     return { count: data ? data.length : items.length, error: null };
