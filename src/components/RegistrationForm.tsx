@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { MrcLogo } from './MrcLogo';
+import { CaptainsLoginModal } from './CaptainsLoginModal';
 import {
   RegistrationData,
   HealthAnswer,
@@ -20,13 +21,37 @@ import {
 
 interface RegistrationFormProps {
   onSubmitSuccess: (data: RegistrationData) => void;
-  onOpenCaptainsPortal: () => void;
+  onOpenCaptainsPortal: (captainName?: string) => void;
 }
 
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   onSubmitSuccess,
   onOpenCaptainsPortal,
 }) => {
+  // Secret Triple-Click State for Captains Access
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSecretTripleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    clickCountRef.current += 1;
+
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+    }
+
+    if (clickCountRef.current >= 3) {
+      clickCountRef.current = 0;
+      setIsAuthModalOpen(true);
+    } else {
+      // Allow up to 1200ms window to complete the 3 clicks
+      clickTimerRef.current = setTimeout(() => {
+        clickCountRef.current = 0;
+      }, 1200);
+    }
+  };
+
   // Form State
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -597,16 +622,26 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         </div>
       </form>
 
-      {/* Swiss Editorial Footer / Discreet Organizer Access */}
+      {/* Swiss Editorial Footer / Discreet Organizer Access (Triple-click protected) */}
       <footer className="mt-12 pt-6 border-t border-[#0047AB]/20 flex justify-center text-xs text-slate-500 font-mono">
         <button
           type="button"
-          onClick={onOpenCaptainsPortal}
-          className="px-3 py-1.5 border border-slate-300 hover:border-[#0047AB] text-slate-600 hover:text-[#0047AB] text-[11px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+          onClick={handleSecretTripleClick}
+          className="px-3 py-1.5 border border-slate-300 hover:border-[#0047AB] text-slate-600 hover:text-[#0047AB] text-[11px] uppercase tracking-wider font-mono transition-colors cursor-pointer select-none active:scale-95"
         >
           Espace Capitaines / Liste des Membres
         </button>
       </footer>
+
+      {/* Secret Authentication Modal for Capitaines (Triggered only after 3 quick clicks) */}
+      <CaptainsLoginModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(captainName) => {
+          setIsAuthModalOpen(false);
+          onOpenCaptainsPortal(captainName);
+        }}
+      />
     </div>
   );
 };

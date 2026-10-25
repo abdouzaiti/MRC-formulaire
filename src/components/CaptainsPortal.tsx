@@ -18,6 +18,7 @@ interface CaptainsPortalProps {
   onClose: () => void;
   registrations: RegistrationData[];
   onRefresh: () => void;
+  activeCaptain?: string;
 }
 
 export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
@@ -25,6 +26,7 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
   onClose,
   registrations,
   onRefresh,
+  activeCaptain,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
@@ -79,9 +81,6 @@ export const CaptainsPortal: React.FC<CaptainsPortalProps> = ({
               <h2 className="font-condensed font-black text-xl uppercase tracking-wider">
                 ESPACE CAPITAINES & ENCADRANTS MRC
               </h2>
-              <p className="text-xs font-mono text-blue-100">
-                Gestion des adhérents · Mostaganem Run Club
-              </p>
             </div>
           </div>
           <button

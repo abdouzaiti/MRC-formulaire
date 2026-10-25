@@ -13,6 +13,7 @@ import { getStoredRegistrations } from './utils/storage';
 export default function App() {
   const [currentRegistration, setCurrentRegistration] = useState<RegistrationData | null>(null);
   const [isCaptainsPortalOpen, setIsCaptainsPortalOpen] = useState(false);
+  const [activeCaptain, setActiveCaptain] = useState<string>('');
   const [allRegistrations, setAllRegistrations] = useState<RegistrationData[]>([]);
 
   // Load registered members from storage
@@ -52,7 +53,10 @@ export default function App() {
           ) : (
             <RegistrationForm
               onSubmitSuccess={handleRegistrationSuccess}
-              onOpenCaptainsPortal={() => setIsCaptainsPortalOpen(true)}
+              onOpenCaptainsPortal={(captainName) => {
+                if (captainName) setActiveCaptain(captainName);
+                setIsCaptainsPortalOpen(true);
+              }}
             />
           )}
         </div>
@@ -64,6 +68,7 @@ export default function App() {
         onClose={() => setIsCaptainsPortalOpen(false)}
         registrations={allRegistrations}
         onRefresh={refreshRegistrations}
+        activeCaptain={activeCaptain}
       />
     </div>
   );
